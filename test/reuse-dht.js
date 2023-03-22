@@ -1,32 +1,34 @@
-var Discovery = require('../')
-var DHT = require('bittorrent-dht')
-var hat = require('hat')
-var test = require('tape')
+import Discovery from '../index.js'
+import DHT from 'bittorrent-dht'
+import randombytes from 'randombytes'
+import test from 'tape'
 
-test('re-use dht, verify that peers are filtered', function (t) {
-  t.plan(3)
-  var infoHash1 = new Buffer(hat(160), 'hex')
-  var infoHash2 = new Buffer(hat(160), 'hex')
+test('re-use dht, verify that peers are filtered', t => {
+  t.plan(5)
+  const infoHash1 = randombytes(20)
+  const infoHash2 = randombytes(20)
 
-  var dht = new DHT()
-  var discovery = new Discovery({
+  const dht = new DHT()
+  const discovery = new Discovery({
     infoHash: infoHash1,
-    peerId: hat(160),
+    peerId: randombytes(20),
     port: 6000,
-    dht: dht
+    dht
   })
 
-  discovery.once('peer', function (addr) {
+  discovery.once('peer', (addr, source) => {
     t.equal(addr, '1.2.3.4:8000')
+    t.equal(source, 'dht')
   })
   dht.emit('peer', { host: '1.2.3.4', port: '8000' }, infoHash1)
 
   // Only peers for `infoHash1` should get emitted, none from `infoHash2`
-  discovery.once('peer', function (addr) {
+  discovery.once('peer', (addr, source) => {
     t.equal(addr, '4.5.6.7:8000')
+    t.equal(source, 'dht')
 
-    discovery.destroy(function () {
-      dht.destroy(function () {
+    discovery.destroy(() => {
+      dht.destroy(() => {
         t.pass()
       })
     })
